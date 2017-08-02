@@ -444,8 +444,14 @@ def main(_):
           batch_size=FLAGS.batch_size,
           num_threads=FLAGS.num_preprocessing_threads,
           capacity=5 * FLAGS.batch_size)
-      labels = slim.one_hot_encoding(
-          labels, dataset.num_classes - FLAGS.labels_offset)
+      preprocessing_label_type = FLAGS.preprocessing_label_type
+      if preprocessing_label_type == 'sparse':
+        labels = slim.one_hot_encoding(
+            labels, dataset.num_classes - FLAGS.labels_offset)
+      elif preprocessing_label_type == 'dense_normalize':
+        labels = tf.cast(labels, tf.float32)
+        labels = tf.div(labels, tf.reduce_sum(labels, axis=1, keep_dims=True))
+
       batch_queue = slim.prefetch_queue.prefetch_queue(
           [images, labels], capacity=2 * deploy_config.num_clones)
 
