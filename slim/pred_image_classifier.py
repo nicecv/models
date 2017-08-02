@@ -79,7 +79,11 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_string(
     'preprocessing_label_type', 'sparse',
     'one of "sparse", "dense", "dense_normalize"')
-    
+
+tf.app.flags.DEFINE_string(
+    'result_save_path', '/tmp/tfmodel/',
+    'The directory where the result was written to or an absolute path')
+        
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -137,9 +141,12 @@ def main(_):
         capacity=5 * FLAGS.batch_size,
         allow_smaller_final_batch=True)
     preprocessing_label_type = FLAGS.preprocessing_label_type
-      if preprocessing_label_type == 'sparse':
-        labels = slim.one_hot_encoding(
-            labels, dataset.num_classes - FLAGS.labels_offset)
+    if preprocessing_label_type == 'sparse':
+      labels = slim.one_hot_encoding(
+          labels, dataset.num_classes - FLAGS.labels_offset)
+    elif preprocessing_label_type == 'dense_normalize':
+      labels = tf.cast(labels, tf.float32)
+      labels = tf.div(labels, tf.reduce_sum(labels, axis=1, keep_dims=True))
     ####################
     # Define the model #
     ####################
@@ -202,8 +209,8 @@ def main(_):
     predictions = predictions[:curr_pos,:]
     targets = targets[:curr_pos,:]
     
-    np.save(os.path.join(FLAGS.checkpoint_path, 'preds.npy'), predictions)
-    np.save(os.path.join(FLAGS.checkpoint_path, 'targets.npy'), targets)
+    np.save(os.path.join(FLAGS.result_save_path, 'preds.npy'), predictions)
+    np.save(os.path.join(FLAGS.result_save_path, 'targets.npy'), targets)
     
 if __name__ == '__main__':
   tf.app.run()
