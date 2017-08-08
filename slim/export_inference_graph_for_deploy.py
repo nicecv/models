@@ -100,14 +100,17 @@ def main(_):
         is_training=FLAGS.is_training)
     image_size = FLAGS.image_size or network_fn.default_image_size
     
-    placeholder = tf.placeholder(name=FLAGS.input_name, dtype=tf.string)
-    image = tf.image.decode_jpeg(placeholder, channels=3)
-    if FLAGS.prepare_image_size:
-      # first resize the image to prepare_image_size
-      prepare_image_size = FLAGS.prepare_image_size
-      image = prepare_resized_image_to_newsize(image, prepare_image_size, prepare_image_size) 
-    processed_image = image_preprocessing_fn(image, image_size, image_size)
-    processed_images = tf.expand_dims(processed_image, 0)
+    placeholder = tf.placeholder(name=FLAGS.input_name, dtype=tf.string, shape=(None,))
+    def preprocess_func(img_string):
+      img = tf.image.decode_jpeg(img_string, channels=3)
+      if FLAGS.prepare_image_size:
+        # first resize the image to prepare_image_size
+        prepare_image_size = FLAGS.prepare_image_size
+        img = prepare_resized_image_to_newsize(img, prepare_image_size, prepare_image_size) 
+      img = image_preprocessing_fn(img, image_size, image_size)
+      return img
+    
+    processed_images = tf.map_fn(preprocess_func, placeholder, dtype=tf.float32)
     
     logits, _ = network_fn(processed_images)
     
