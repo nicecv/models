@@ -43,10 +43,7 @@ class FeatureExtractionFromFrozenGraph(object):
                      input_names.strip().split(',')]
     self._outputs = [graph.get_tensor_by_name(prefix_name+'/'+output_name) for output_name in
                      output_names.strip().split(',')]
-    
-    jit_level = tf.OptimizerOptions.ON_1
-    config.graph_options.optimizer_options.global_jit_level = jit_level
-                     
+                  
     self._sess = tf.Session(config=config, graph=graph)
 
   def process(self, input_features):
@@ -61,7 +58,7 @@ class FeatureExtractionFromFrozenGraph(object):
 def usage_exmaple():
   frozen_graph_filename = '/tmp/frozen_model.pb'
   input_names = 'input:0'
-  output_names = 'output:0,resnet_v1_50/pool5:0'
+  output_names = 'output:1,resnet_v1_50/pool5:0'
   prefix_name = 'nice'
   
   extractor = FeatureExtractionFromFrozenGraph(frozen_graph_filename, input_names, output_names, prefix_name)
@@ -70,6 +67,7 @@ def usage_exmaple():
   for i in xrange(32):
     st = time.time()
     [probs,features] = extractor.process([np.array([img,img])])
+    print probs
     print np.array(probs).shape, np.array(features).shape
     print time.time() - st
 

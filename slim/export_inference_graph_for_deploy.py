@@ -114,7 +114,9 @@ def main(_):
     
     logits, _ = network_fn(processed_images)
     
-    probabilities = tf.nn.softmax(logits, name=FLAGS.output_name)
+    #probabilities = tf.nn.softmax(logits, name='prob')
+    
+    preds_values, preds_indices = tf.nn.top_k(logits, k=10, name=FLAGS.output_name)
     
     init_fn = slim.assign_from_checkpoint_fn(
                 FLAGS.checkpoint_path,
