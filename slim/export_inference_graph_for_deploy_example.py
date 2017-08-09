@@ -35,6 +35,10 @@ class FeatureExtractionFromFrozenGraph(object):
     
     graph = load_graph(frozen_graph_filename, prefix_name)
     
+    # We can verify that we can access the list of operations in the graph
+    for op in graph.get_operations():
+        print(op.name)
+    
     self._inputs = [graph.get_tensor_by_name(prefix_name+'/'+input_name) for input_name in 
                      input_names.strip().split(',')]
     self._outputs = [graph.get_tensor_by_name(prefix_name+'/'+output_name) for output_name in
