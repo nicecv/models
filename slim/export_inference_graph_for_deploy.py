@@ -74,7 +74,7 @@ FLAGS = tf.app.flags.FLAGS
 
 def prepare_resized_image_to_newsize(image, new_height, new_width):
     original_shape = tf.shape(image)
-    if original_shape[0] == new_height or original_shape[1] == new_width:
+    if original_shape[0] == new_height and original_shape[1] == new_width:
         return image
     image = tf.expand_dims(image, 0)
     resized_image = tf.image.resize_bilinear(image, [new_height, new_width],
