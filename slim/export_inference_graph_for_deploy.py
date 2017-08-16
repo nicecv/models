@@ -46,6 +46,9 @@ tf.app.flags.DEFINE_integer(
     'prepare_image_size', None,
     'The image size to use.')
 
+tf.app.flags.DEFINE_integer(
+    'num_classes', None,
+    'The num of classes.')
 
 tf.app.flags.DEFINE_string('dataset_name', 'imagenet',
                            'The name of the dataset to use with the model.')
@@ -88,11 +91,15 @@ def main(_):
     raise ValueError('You must supply the path to save to with --output_file')
   tf.logging.set_verbosity(tf.logging.INFO)
   with tf.Graph().as_default() as graph:
-    dataset = dataset_factory.get_dataset(FLAGS.dataset_name, 'train',
-                                          FLAGS.dataset_dir)
+    num_classes = FLAGS.num_classes
+    if num_classes is None:
+      dataset = dataset_factory.get_dataset(FLAGS.dataset_name, 'train',
+                                            FLAGS.dataset_dir)
+      num_classes = dataset.num_classes
+    
     network_fn = nets_factory.get_network_fn(
         FLAGS.model_name,
-        num_classes=(dataset.num_classes - FLAGS.labels_offset),
+        num_classes=(num_classes - FLAGS.labels_offset),
         is_training=FLAGS.is_training)
     preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
