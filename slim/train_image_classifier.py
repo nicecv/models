@@ -123,6 +123,10 @@ tf.app.flags.DEFINE_float(
 
 tf.app.flags.DEFINE_float('rmsprop_decay', 0.9, 'Decay term for RMSProp.')
 
+tf.app.flags.DEFINE_string(
+    'loss_type', 'softmax',
+    'one of "softmax","sigmoid"')
+
 #######################
 # Learning Rate Flags #
 #######################
@@ -467,13 +471,23 @@ def main(_):
       #############################
       # Specify the loss function #
       #############################
-      if 'AuxLogits' in end_points:
+      loss_type = FLAGS.loss_type
+      if loss_type == 'softmax':
+        if 'AuxLogits' in end_points:
+          tf.losses.softmax_cross_entropy(
+              logits=end_points['AuxLogits'], onehot_labels=labels,
+              label_smoothing=FLAGS.label_smoothing, weights=0.4, scope='aux_loss')
         tf.losses.softmax_cross_entropy(
-            logits=end_points['AuxLogits'], onehot_labels=labels,
-            label_smoothing=FLAGS.label_smoothing, weights=0.4, scope='aux_loss')
-      tf.losses.softmax_cross_entropy(
-          logits=logits, onehot_labels=labels,
-          label_smoothing=FLAGS.label_smoothing, weights=1.0)
+            logits=logits, onehot_labels=labels,
+            label_smoothing=FLAGS.label_smoothing, weights=1.0)
+      elif loss_type == 'sigmoid':
+        if 'AuxLogits' in end_points:
+          tf.losses.sigmoid_cross_entropy(
+              logits=end_points['AuxLogits'], multi_class_labels=labels,
+              label_smoothing=FLAGS.label_smoothing, weights=0.4, scope='aux_loss')
+        tf.losses.sigmoid_cross_entropy(
+            logits=logits, multi_class_labels=labels,
+            label_smoothing=FLAGS.label_smoothing, weights=1.0)
       return end_points
 
     # Gather initial summaries.
