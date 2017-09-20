@@ -17,6 +17,6 @@ $HOME/installed/python_tf_1.3.0-rc2/bin/python -u train_image_classifier.py \
     --model_name=${model_name} \
     --num_clones=2 \
     --preprocessing_label_type=dense_normalize \
-    --learning_rate=0.00001 
-#    --checkpoint_exclude_scopes=resnet_v1_50/logits \
-#    --checkpoint_path=$pretrain_dir
+    --learning_rate=0.01 \
+    --checkpoint_exclude_scopes=resnet_v1_50/logits \
+    --checkpoint_path=$pretrain_dir
