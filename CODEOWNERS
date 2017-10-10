@@ -1,6 +1,8 @@
 adversarial_crypto/* @dave-andersen
 adversarial_text/* @rsepassi
+adv_imagenet_models/* @AlexeyKurakin
 attention_ocr/* @alexgorban
+audioset/* @plakal @dpwe
 autoencoders/* @snurkabill
 cognitive_mapping_and_planning/* @s-gupta
 compression/* @nmjohn

@@ -4,7 +4,7 @@ checkpoint_dir=/raid_sda/home/fengfangxiang/log/resnet_v1_50_nice_data_v1_softma
 data_dir=/raid_sda/home/fengfangxiang/data/nice_data_v1/image
 
 /home/fengfangxiang/installed/python2712/bin/python -u pred_image_classifier.py \
-  --checkpoint_path=${checkpoint_dir}/model.ckpt-991267 \
+  --checkpoint_path=${checkpoint_dir}/model.ckpt-1756957 \
   --dataset_name=nice_data_v1 \
   --dataset_split_name=validation \
   --dataset_dir=${data_dir} \
