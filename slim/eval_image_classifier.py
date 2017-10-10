@@ -18,9 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import math
+import eval_util
+import utils
 import tensorflow as tf
-
 from datasets import dataset_factory
 from nets import nets_factory
 from preprocessing import preprocessing_factory
@@ -33,6 +35,7 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_integer(
     'max_num_batches', None,
     'Max number of batches to evaluate by default use all.')
+
 
 tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
@@ -48,6 +51,10 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_integer(
     'num_preprocessing_threads', 4,
     'The number of threads used to create the batches.')
+
+tf.app.flags.DEFINE_integer(
+    'num_epochs', 1,
+    'The number of epochs.')
 
 tf.app.flags.DEFINE_string(
     'dataset_name', 'imagenet', 'The name of the dataset to load.')
@@ -78,6 +85,11 @@ tf.app.flags.DEFINE_float(
 
 tf.app.flags.DEFINE_integer(
     'eval_image_size', None, 'Eval image size')
+
+tf.app.flags.DEFINE_string(
+#    'preprocessing_label_type', 'dense_normalize',
+    'preprocessing_label_type', 'sparse',
+    'one of "sparse", "dense", "dense_normalize"')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -110,6 +122,7 @@ def main(_):
     provider = slim.dataset_data_provider.DatasetDataProvider(
         dataset,
         shuffle=False,
+	num_epochs=10,
         common_queue_capacity=2 * FLAGS.batch_size,
         common_queue_min=FLAGS.batch_size)
     [image, label] = provider.get(['image', 'label'])
@@ -147,44 +160,91 @@ def main(_):
     else:
       variables_to_restore = slim.get_variables_to_restore()
 
-    predictions = tf.argmax(logits, 1)
-    labels = tf.squeeze(labels)
 
-    # Define the metrics:
-    names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
-        'Accuracy': slim.metrics.streaming_accuracy(predictions, labels),
-        'Recall_5': slim.metrics.streaming_recall_at_k(
-            logits, labels, 5),
-    })
+    if FLAGS.preprocessing_label_type == 'dense_normalize':
+        #labels = slim.one_hot_encoding(
+        #  labels, dataset.num_classes)
+        labels = tf.cast(labels, tf.float32)
+        labels = tf.div(labels, tf.reduce_sum(labels, axis=1, keep_dims=True))
+        loss = tf.losses.softmax_cross_entropy(
+          logits=logits, onehot_labels=labels, weights=1.0)
+        evl_metrics = eval_util.EvaluationMetrics(dataset.num_classes,1)
+        saver = tf.train.Saver(tf.global_variables())
+        with tf.Session() as sess:
+	    sess.run([tf.local_variables_initializer()])
+            evl_metrics.clear()
+            latest_checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+            if latest_checkpoint:
+                #logging.info("Loading checkpoint for eval: " + latest_checkpoint)
+                saver.restore(sess, latest_checkpoint)
+                global_step_val = latest_checkpoint.split("/")[-1].split("-")[-1]
+            else:
+                #logging.info("No checkpoint file found.")
+                return global_step_val
+            coord = tf.train.Coordinator()
+            try:
+                threads = []
+                for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+                    threads.extend(qr.create_threads(
+                        sess, coord=coord, daemon=True,
+                        start=True))
+                #logging.info("enter eval_once loop global_step_val = %s. ",
+                #   global_step_val)
 
-    # Print the summaries to screen.
-    for name, value in names_to_values.items():
-      summary_name = 'eval/%s' % name
-      op = tf.summary.scalar(summary_name, value, collections=[])
-      op = tf.Print(op, [value], summary_name)
-      tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
+                idx = 0
+                examples_processed = 0
+                while not coord.should_stop():
+                    predictions_val, labels_val, loss_val = sess.run([logits, labels, loss])
+		    examples_processed += labels_val.shape[0]
+                    iteration_info_dict = evl_metrics.accumulate(predictions_val,
+                                                     labels_val, loss_val)
+		    print ("examples_processed: %d, Batch Hit@1: %f, Batch PERR: %f, Batch Loss: %f" % (examples_processed, iteration_info_dict['hit_at_one'], iteration_info_dict['perr'], iteration_info_dict['loss']))
 
-    # TODO(sguada) use num_epochs=1
-    if FLAGS.max_num_batches:
-      num_batches = FLAGS.max_num_batches
+            except tf.errors.OutOfRangeError as e:
+
+                    epoch_info_dict = evl_metrics.get()
+		    print ("examples_processed: %d, Avg_Hit@1: %f, Avg_PERR: %f, MAP: %f, GAP: %f, Avg_Loss: %f" % (examples_processed, epoch_info_dict['avg_hit_at_one'], epoch_info_dict['avg_perr'], np.mean(epoch_info_dict['aps']), epoch_info_dict['gap'], epoch_info_dict['avg_loss']))
+                      #logging.info(
+          #"Done with batched inference. Now calculating global performance "
+          #"metrics.")
     else:
-      # This ensures that we make a single pass over all of the data.
-      num_batches = math.ceil(dataset.num_samples / float(FLAGS.batch_size))
+        labels = tf.squeeze(labels)
+        predictions = tf.argmax(logits, 1)
 
-    if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
-      checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
-    else:
-      checkpoint_path = FLAGS.checkpoint_path
+        # Define the metrics:
+        names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
+            'Accuracy': slim.metrics.streaming_accuracy(predictions, labels),
+            'Recall_5': slim.metrics.streaming_recall_at_k(
+                logits, labels, 5),
+        })
 
-    tf.logging.info('Evaluating %s' % checkpoint_path)
+        # Print the summaries to screen.
+        for name, value in names_to_values.items():
+          summary_name = 'eval/%s' % name
+          op = tf.summary.scalar(summary_name, value, collections=[])
+          op = tf.Print(op, [value], summary_name)
+          tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
 
-    slim.evaluation.evaluate_once(
-        master=FLAGS.master,
-        checkpoint_path=checkpoint_path,
-        logdir=FLAGS.eval_dir,
-        num_evals=num_batches,
-        eval_op=list(names_to_updates.values()),
-        variables_to_restore=variables_to_restore)
+        # TODO(sguada) use num_epochs=1
+        if FLAGS.max_num_batches:
+          num_batches = FLAGS.max_num_batches
+        else:
+          # This ensures that we make a single pass over all of the data.
+          num_batches = math.ceil(dataset.num_samples / float(FLAGS.batch_size))
+
+        if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
+          checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+        else:
+          checkpoint_path = FLAGS.checkpoint_path
+
+        tf.logging.info('Evaluating %s' % checkpoint_path)
+        slim.evaluation.evaluate_once(
+            master=FLAGS.master,
+            checkpoint_path=checkpoint_path,
+            logdir=FLAGS.eval_dir,
+            num_evals=num_batches,
+            eval_op=list(names_to_updates.values()),
+            variables_to_restore=variables_to_restore)
 
 
 if __name__ == '__main__':
