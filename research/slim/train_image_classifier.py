@@ -490,11 +490,6 @@ def main(_):
         tf.losses.sigmoid_cross_entropy(
             logits=logits, multi_class_labels=labels,
             label_smoothing=FLAGS.label_smoothing, weights=1.0)
-      if 'AuxLogits' in end_points:
-        slim.losses.softmax_cross_entropy(
-            end_points['AuxLogits'], labels,
-            label_smoothing=FLAGS.label_smoothing, weights=0.4,
-            scope='aux_loss')
       slim.losses.softmax_cross_entropy(
           logits, labels, label_smoothing=FLAGS.label_smoothing, weights=1.0)
       return end_points
