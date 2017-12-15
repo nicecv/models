@@ -490,8 +490,6 @@ def main(_):
         tf.losses.sigmoid_cross_entropy(
             logits=logits, multi_class_labels=labels,
             label_smoothing=FLAGS.label_smoothing, weights=1.0)
-      slim.losses.softmax_cross_entropy(
-          logits, labels, label_smoothing=FLAGS.label_smoothing, weights=1.0)
       return end_points
 
     # Gather initial summaries.
