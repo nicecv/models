@@ -162,8 +162,6 @@ def main(_):
 
 
     if FLAGS.preprocessing_label_type == 'dense_normalize':
-        #labels = slim.one_hot_encoding(
-        #  labels, dataset.num_classes)
         labels = tf.cast(labels, tf.float32)
         labels = tf.div(labels, tf.reduce_sum(labels, axis=1, keep_dims=True))
         loss = tf.losses.softmax_cross_entropy(
@@ -171,7 +169,7 @@ def main(_):
         evl_metrics = eval_util.EvaluationMetrics(dataset.num_classes,1)
         saver = tf.train.Saver(tf.global_variables())
         with tf.Session() as sess:
-	    sess.run([tf.local_variables_initializer()])
+	        sess.run([tf.local_variables_initializer()])
             evl_metrics.clear()
             latest_checkpoint = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
             if latest_checkpoint:
