@@ -23,13 +23,15 @@ from datasets import flowers
 from datasets import imagenet
 from datasets import mnist
 from datasets import nice_data_v1
+from datasets import nice_data_v2
 
 datasets_map = {
     'cifar10': cifar10,
     'flowers': flowers,
     'imagenet': imagenet,
     'mnist': mnist,
-    'nice_data_v1': nice_data_v1
+    'nice_data_v1': nice_data_v1,
+    'nice_data_v2': nice_data_v2
 }
 
 
