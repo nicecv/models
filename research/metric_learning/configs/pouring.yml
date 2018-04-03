@@ -1,0 +1,48 @@
+# Train with Multi-View TCN.
+training_strategy: 'mvtcn'
+
+# Use the 'inception_conv_ss_fc' embedder, which has the structure:
+# InceptionV3 -> 2 conv adaptation layers -> spatial softmax -> fully connected
+# -> embedding.
+embedder_strategy: 'resnet'
+
+# Use npairs loss.
+loss_strategy: 'npairs'
+
+learning:
+  learning_rate: 0.0001
+
+# Set some hyperparameters for our embedder.
+inception_conv_ss_fc:
+  # Don't finetune the pre-trained weights.
+  finetune_inception: true
+  dropout:
+    # Don't dropout convolutional activations.
+    keep_conv: 1.0
+    # Use a dropout of 0.8 on the fully connected activations.
+    keep_fc: 0.8
+    # Use a dropout of 0.8 on the inception activations.
+    keep_pretrained: 0.8
+
+# Size of the TCN embedding.
+embedding_size: 256 
+
+data:
+  batch_size: 32
+  preprocessing:
+    # Inference-time image cropping strategy.
+    eval_cropping: 'crop_center'
+  augmentation:
+    # Do scale augmentation.
+    minscale: 0.8 # When downscaling, zoom in to 80% of the central bounding box.
+    maxscale: 3.0 # When upscaling, zoom out to 300% of the central bounding box.
+    proportion_scaled_up: 0.5 # Proportion of the time to scale up rather than down.
+    color: false # Do color augmentation.
+    fast_mode: true
+  # Paths to the data.
+  training: '/raid/data/nice/metric_data/tfrecords/train/shoe'
+  validation: '/raid/data/nice/metric_data/tfrecords/val/shoe'
+
+logging:
+  checkpoint:
+    save_checkpoints_steps: 1000
